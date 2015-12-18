@@ -31,6 +31,8 @@ namespace Bruce {
 
   namespace MockKafkaServer {
 
+    extern bool IsUsingSSL;
+
     struct TConfig {
       /* Throws TArgParseError on error parsing args. */
       TConfig(int argc, char *argv[]);
@@ -48,6 +50,12 @@ namespace Bruce {
       in_port_t CmdPort;
 
       bool SingleOutputFile;
+
+      // Use SSL?
+      bool UseSSL;
+      
+      // Path and filename for SSL server certifiace
+      std::string ServerCert;
     };  // TConfig
 
   }  // MockKafkaServer

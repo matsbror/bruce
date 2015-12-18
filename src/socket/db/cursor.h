@@ -25,6 +25,7 @@
 #include <netdb.h>
 
 #include <base/fd.h>
+#include <ssl/abstract_socket.h>
 #include <base/no_copy_semantics.h>
 #include <socket/address.h>
 
@@ -76,6 +77,7 @@ namespace Socket {
 
       /* Opens a socket compatible with the current host. */
       Base::TFd NewCompatSocket() const;
+      SSL_config::TAbstractSocket NewAbstractSocket(bool useSSL = false) const;
 
       /* Go back to the first address, if any. */
       TCursor &Rewind() {

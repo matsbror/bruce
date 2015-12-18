@@ -21,16 +21,20 @@
 
 #include <bruce/router_thread.h>
 
+#include <iostream>
 #include <array>
 #include <cstdlib>
 #include <functional>
 #include <limits>
 #include <stdexcept>
 #include <system_error>
+#include <string>
+#include <iomanip>
 
 #include <syslog.h>
 #include <unistd.h>
 
+#include <ssl/ssl_init_shared_state.h>
 #include <base/gettid.h>
 #include <base/io_utils.h>
 #include <base/no_default_case.h>
@@ -113,6 +117,17 @@ TRouterThread::TRouterThread(const TConfig &config, const TConf &conf,
       Dispatcher(dispatcher),
       DebugLogger(debug_setup, TDebugSetup::TLogId::MSG_RECEIVE,
                   !config.OmitTimestamp, config.UseOldOutputFormat) {
+  // Init SSL
+  if (Config.UseSSL) {
+    SSL_config::TSSL_Init& ssl_Singleton = SSL_config::TSSL_Init::Instance();
+    union {
+      unsigned long c1;
+      SSL_CTX *c2;
+    } ctx_union;
+    assert(sizeof(ctx_union.c1) == sizeof(ctx_union.c2));
+    ctx_union.c2 = ssl_Singleton.get_ctx();
+    syslog(LOG_NOTICE, "MockKafkaServer SSL Initialized with CTX: 0x%lx", ctx_union.c1);
+  }
 }
 
 TRouterThread::~TRouterThread() noexcept {
@@ -261,7 +276,7 @@ bool TRouterThread::AutocreateTopic(TMsg::TPtr &msg) {
            "to broker %s port %d", topic.c_str(), broker.Host.c_str(),
            static_cast<int>(broker.Port));
 
-    if (!MetadataFetcher.Connect(broker.Host, broker.Port)) {
+    if (!MetadataFetcher.Connect(broker.Host, broker.Port, Config.UseSSL)) {
       ConnectFailOnTopicAutocreate.Increment();
       syslog(LOG_ERR, "Router thread failed to connect to broker for topic "
              "autocreate");
@@ -1417,7 +1432,7 @@ std::shared_ptr<TMetadata> TRouterThread::TryGetMetadata() {
     syslog(LOG_INFO, "Router thread getting metadata from broker %s port %d",
            broker.Host.c_str(), static_cast<int>(broker.Port));
 
-    if (!MetadataFetcher.Connect(broker.Host, broker.Port)) {
+    if (!MetadataFetcher.Connect(broker.Host, broker.Port, Config.UseSSL)) {
       ConnectFailOnTryGetMetadata.Increment();
       syslog(LOG_ERR, "Router thread failed to connect to broker for "
              "metadata");

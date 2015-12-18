@@ -32,9 +32,10 @@
 #include <vector>
 
 #include <base/event_semaphore.h>
-#include <base/fd.h>
+//#include <base/fd.h>
 #include <base/no_copy_semantics.h>
 #include <base/opt.h>
+#include <ssl/abstract_socket.h>
 #include <bruce/debug/debug_logger.h>
 #include <bruce/kafka_proto/produce_request_writer_api.h>
 #include <bruce/kafka_proto/produce_response_reader_api.h>
@@ -161,7 +162,7 @@ namespace Bruce {
       void DoRun();
 
       /* TCP socket to Kafka broker. */
-      Base::TFd Sock;
+      SSL_config::TAbstractSocket Sock;
 
       /* After connector thread is shut down, all messages waiting to be sent
          (including those waiting to be resent due to an error ACK) are moved

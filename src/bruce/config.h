@@ -109,6 +109,12 @@ namespace Bruce {
     bool UseOldInputFormat;
 
     bool UseOldOutputFormat;
+
+    bool UseSSL;
+
+    std::string SSLClientCert;
+
+
   };  // TConfig
 
   void LogConfig(const TConfig &config);

@@ -56,7 +56,7 @@ namespace Bruce {
 
       Bruce::MockKafkaServer::TErrorInjector Inj;
 
-      explicit TMockKafkaConfig(const std::vector<std::string> &config_file);
+      explicit TMockKafkaConfig(const std::vector<std::string> &config_file, bool useSSL=false);
 
       ~TMockKafkaConfig() noexcept {
         StopKafka();

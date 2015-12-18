@@ -282,6 +282,17 @@ static void ParseArgs(int argc, char *argv[], TConfig &config) {
         "it will soon be removed.  Its purpose is to provide compatibility "
         "with legacy infrastructure at if(we).", cmd,
         config.UseOldOutputFormat);
+
+
+    SwitchArg arg_use_ssl("", "use_ssl", 
+				   "Use SSL in communication with Kafka.", 
+				   cmd, config.UseSSL);
+    ValueArg<decltype(config.SSLClientCert)> arg_ssl_client_cert("", 
+							    "ssl_client_cert",
+        "Absolute path to SSL client certificate.", false, config.SSLClientCert,
+        "DIR");
+    cmd.add(arg_ssl_client_cert);
+
     cmd.parse(argc, &arg_vec[0]);
     config.ConfigPath = arg_config_path.getValue();
     config.LogLevel = StringToLogLevel(arg_log_level.getValue());
@@ -347,6 +358,9 @@ static void ParseArgs(int argc, char *argv[], TConfig &config) {
     config.TopicAutocreate = arg_topic_autocreate.getValue();
     config.UseOldInputFormat = arg_use_old_input_format.getValue();
     config.UseOldOutputFormat = arg_use_old_output_format.getValue();
+    config.UseSSL = arg_use_ssl.getValue();
+    config.SSLClientCert = arg_ssl_client_cert.getValue();
+
   } catch (const ArgException &x) {
     throw TArgParseError(x.error(), x.argId());
   }
@@ -480,4 +494,11 @@ void Bruce::LogConfig(const TConfig &config) {
          config.UseOldInputFormat ? "old" : "new");
   syslog(LOG_NOTICE, "Using %s output format",
          config.UseOldOutputFormat ? "old" : "new");
+  if (config.UseSSL){
+    syslog(LOG_NOTICE, "Using SSL in communication with Kafka enabled");
+    syslog(LOG_NOTICE, "Path to client certificate: [%s]", config.SSLClientCert.c_str());
+  } else {
+    syslog(LOG_NOTICE,  "Using SSL in communication with Kafka disabled");
+  }
+
 }

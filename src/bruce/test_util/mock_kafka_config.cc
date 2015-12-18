@@ -31,7 +31,7 @@ using namespace Base;
 using namespace Bruce;
 using namespace Bruce::TestUtil;
 
-TMockKafkaConfig::TMockKafkaConfig(const std::vector<std::string> &config_file)
+TMockKafkaConfig::TMockKafkaConfig(const std::vector<std::string> &config_file, bool useSSL)
     : KafkaStarted(false),
       SetupFile("/tmp/bruce_tmp.XXXXXX", true),
       OutputDir("/tmp/bruce_tmp.XXXXXX", true) {
@@ -42,6 +42,9 @@ TMockKafkaConfig::TMockKafkaConfig(const std::vector<std::string> &config_file)
 
   Args.push_back("mock_kafka_server");
   Args.push_back("--log_echo");
+  if (useSSL) {
+    Args.push_back("--use_ssl");
+  }
   Args.push_back("--output_dir");
   Args.push_back(OutputDir.GetName());
   Args.push_back("--setup_file");

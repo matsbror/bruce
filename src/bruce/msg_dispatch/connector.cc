@@ -27,6 +27,7 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_set>
+#include <iostream>
 
 #include <poll.h>
 #include <sys/socket.h>
@@ -51,6 +52,7 @@
 #include <server/counter.h>
 
 using namespace Base;
+using namespace SSL_config;
 using namespace Bruce;
 using namespace Bruce::Batch;
 using namespace Bruce::Debug;
@@ -263,7 +265,8 @@ bool TConnector::DoConnect() {
       static_cast<unsigned>(port));
 
   try {
-    ConnectToHost(host, port, Sock);
+    // test for the need to do an SSL connection
+    ConnectToHost(host, port, Sock, (Ds.Config.UseSSL ? true : false ));
   } catch (const std::system_error &x) {
     syslog(LOG_ERR, "Starting pause on failure to connect to broker %s port "
         "%u: %s", host.c_str(), static_cast<unsigned>(port), x.what());
@@ -408,8 +411,12 @@ bool TConnector::TrySendProduceRequest() {
   assert(this);
 
   try {
+    SendBuf.MarkConsumed(Sock.WriteAtMost(SendBuf.Data(), SendBuf.DataSize()));
+
+#if 0
     SendBuf.MarkConsumed(IfLt0(send(Sock, SendBuf.Data(), SendBuf.DataSize(),
         MSG_NOSIGNAL)));
+#endif
   } catch (const std::system_error &x) {
     if (LostTcpConnection(x)) {
       syslog(LOG_ERR, "Connector thread %d (index %lu broker %ld) starting "
@@ -489,7 +496,10 @@ bool TConnector::DoSockRead(size_t min_size) {
   ssize_t result = 0;
 
   try {
+    result = Sock.ReadAtMost(ReceiveBuf.Space(), ReceiveBuf.SpaceSize());
+#if 0
     result = IfLt0(recv(Sock, ReceiveBuf.Space(), ReceiveBuf.SpaceSize(), 0));
+#endif
   } catch (const std::system_error &x) {
     if (LostTcpConnection(x)) {
       syslog(LOG_ERR, "Connector thread %d (index %lu broker %ld) starting "

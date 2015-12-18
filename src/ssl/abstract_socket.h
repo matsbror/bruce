@@ -1,4 +1,4 @@
-/* <base/fd.h>
+/* <ssl/abstract_socket.h>
 
    ----------------------------------------------------------------------------
    Copyright 2010-2013 if(we)
@@ -30,11 +30,16 @@
 
 #include <unistd.h>
 #include <sys/socket.h>
+#include <openssl/err.h>
+#include <openssl/ssl.h>
+#include <openssl/crypto.h>
+#include <syslog.h>
 
 #include <base/error_utils.h>
 #include <base/no_copy_semantics.h>
+#include <ssl/ssl_init_shared_state.h>
 
-namespace Base {
+namespace SSL_config {
 
   /* An RAII container for an OS file descriptor.
 
@@ -50,69 +55,171 @@ namespace Base {
 
      For example:
 
-        TFd sock(HERE, socket(IF_INET, SOCK_STREAM, IPPROTO_TCP));
+        TAbstractSocket sock(HERE, socket(IF_INET, SOCK_STREAM, IPPROTO_TCP));
 
-     If socket() fails (and so returns a negative value), the TFd constructor
+     If socket() fails (and so returns a negative value), the TAbstractSocket constructor
      will throw an instance of std::system_error.
 
      You may also pass a naked file descriptor in the stdio range (0-2) to this
      constructor.  In this case, the newly constructed object will hold the
      file desciptor, but it will not attempt to close it. */
-  class TFd {
+
+  class TAbstractSocket {
     public:
 
     /* Default-construct as an illegal value (-1). */
-    TFd() noexcept
-        : OsHandle(-1) {
+    TAbstractSocket() noexcept
+      : OsHandle{-1}, useSSL{ false }, thisSsl { nullptr } {
     }
 
     /* Move-construct, leaving the donor in the default-constructed state. */
-    TFd(TFd &&that) noexcept {
+    TAbstractSocket(TAbstractSocket &&that) noexcept {
       assert(&that);
       OsHandle = that.OsHandle;
+      useSSL = that.useSSL;
+      that.useSSL = false;
       that.OsHandle = -1;
+      if (useSSL) {
+	thisSsl = that.thisSsl;
+	that.thisSsl = nullptr;
+      }
     }
 
     /* Copy-construct, duplicating the file descriptor with the OS call dup(),
        if necessary. */
-    TFd(const TFd &that) {
+  TAbstractSocket(const TAbstractSocket &that, bool _useSSL = false) 
+    : useSSL { _useSSL }, thisSsl { nullptr } {
       assert(&that);
-      OsHandle = (that.OsHandle >= 3) ?
-          IfLt0(dup(that.OsHandle)) : that.OsHandle;
-    }
 
+      OsHandle = (that.OsHandle >= 3) ?
+	Base::IfLt0(dup(that.OsHandle)) : that.OsHandle;
+
+      useSSL = that.useSSL;    
+
+      if (useSSL) {
+	SSL_config::TSSL_Init& ssl_Singleton = SSL_config::TSSL_Init::Instance();
+
+	thisSsl = SSL_new(ssl_Singleton.get_ctx());
+
+	if (!thisSsl) {
+	  syslog(LOG_ERR, "Failed to get new SSL object\n");
+	  throw std::runtime_error("Failed to get new SSL object");	  
+	}
+	// Connect the socket to the SSL object
+	if (!SSL_set_fd(thisSsl, OsHandle)){
+	  syslog(LOG_ERR, "Could not connect socket to SSL object\n");
+	  throw std::runtime_error("Could not connect socket to SSL object");
+	}
+      }
+      
+    }
+    
     /* Construct from a naked file descriptor, which the new instance will own.
        Use this constructor to capture the result of an OS function, such as
        socket(), which returns a newly created file descriptor.  If the result
        is not a legal file descriptor, this function will throw the appropriate
-       error. */
-    TFd(int os_handle) {
-      OsHandle = IfLt0(os_handle);
-    }
+       error. 
+       
+       If SSL is to be used, then an SSL object is also created and 
+       attached to the socket. 
+    */
+    TAbstractSocket(int os_handle, bool _useSSL = false) 
+      : useSSL { _useSSL }, thisSsl { nullptr } {
+      OsHandle = Base::IfLt0(os_handle);
 
+      if (useSSL) {
+	SSL_config::TSSL_Init& ssl_Singleton = SSL_config::TSSL_Init::Instance();
+
+	thisSsl = SSL_new(ssl_Singleton.get_ctx());
+	if (!thisSsl) {
+	  syslog(LOG_ERR, "Failed to get new SSL object\n");
+	  throw std::runtime_error("Failed to get new SSL object");	  
+	}
+	// Connect the socket to the SSL object
+	if (!SSL_set_fd(thisSsl, OsHandle)){
+	  syslog(LOG_ERR, "Could not connect socket to SSL object\n");
+	  throw std::runtime_error("Could not connect socket to SSL object");
+	}
+	// Connection to SSL server is done in ConnectToHost (connect_to_host.cc)
+      }
+
+    }
+    
     /* Close the file descriptor we own, if any.  If the descriptor is in the
        stdio range (0-2), then don't close it. */
-    ~TFd() noexcept {
+    ~TAbstractSocket() noexcept {
       assert(this);
 
       if (OsHandle >= 3) {
         close(OsHandle);
       }
+      if (useSSL){
+	if (thisSsl){
+	  SSL_free(thisSsl);
+	}
+      }
     }
 
+    SSL *getSSL(){
+      return thisSsl;
+    }
+
+    bool getUseSSLFlag() {
+      return useSSL;
+    }
+
+    void setUseSSLFlag(bool _useSSL) {
+      useSSL = _useSSL;
+    }
+
+    void ShowCerts() {
+      X509 *cert;
+      char *line;
+      
+      /* get the server's certificate */
+      cert = SSL_get_peer_certificate(thisSsl); 
+
+      if ( cert != nullptr ) {
+	std::cout << "Server certificates:\n";
+
+	line =  X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
+	std::cout << "Subject: " <<  line << std::endl;
+	free(line);       /* free the malloc'ed string */
+
+	line = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0);
+	std::cout << "Issuer: " << line << std::endl;
+	free(line);       /* free the malloc'ed string */
+	
+	// Verify the certificate
+	if(SSL_get_verify_result(thisSsl) == X509_V_OK){
+	  std::cout << "Certificate verified!"  << std::endl;
+	} else {
+	  std::cout << "Certificate not valid!"  << std::endl;
+	}
+	
+	X509_free(cert);     /* free the malloc'ed certificate copy */
+      } else {
+	std::cout << "No certificates.\n";
+	return;
+      }
+    } // SHowCerts
+
+
     /* Swaperator. */
-    TFd &operator=(TFd &&that) noexcept {
+    TAbstractSocket &operator=(TAbstractSocket &&that) noexcept {
       assert(this);
       assert(&that);
       std::swap(OsHandle, that.OsHandle);
+      std::swap(thisSsl, that.thisSsl);
+      std::swap(useSSL, that.useSSL);
       return *this;
     }
 
     /* Assignment.  This will duplicate the file descriptor, if any, using the
        OS function dup(). */
-    TFd &operator=(const TFd &that) {
+    TAbstractSocket &operator=(const TAbstractSocket &that) {
       assert(this);
-      return *this = TFd(that);
+      return *this = TAbstractSocket(that);
     }
 
     /* Assign from a naked file descriptor, which we will now own.  Use this
@@ -120,9 +227,9 @@ namespace Base {
        which returns a newly created file descriptor.  If the result is not a
        legal file descriptor, this function will throw the appropriate
        error. */
-    TFd &operator=(int os_handle) {
+    TAbstractSocket &operator=(int os_handle) {
       assert(this);
-      return *this = TFd(os_handle);
+      return *this = TAbstractSocket(os_handle);
     }
 
     /* Returns the naked file descriptor, which may be -1. */
@@ -153,30 +260,30 @@ namespace Base {
     }
 
     /* Return to the default-constructed state. */
-    TFd &Reset() noexcept {
+    TAbstractSocket &Reset() noexcept {
       assert(this);
-      return *this = TFd();
+      return *this = TAbstractSocket();
     }
 
     /* Construct the read- and write-only ends of a pipe. */
-    static void Pipe(TFd &readable, TFd &writeable, int flags = 0) {
+    static void Pipe(TAbstractSocket &readable, TAbstractSocket &writeable, int flags = 0) {
       assert(&readable);
       assert(&writeable);
       int fds[2];
-      IfLt0(pipe2(fds, flags) < 0);
-      readable = TFd(fds[0], NoThrow);
-      writeable = TFd(fds[1], NoThrow);
+      Base::IfLt0(pipe2(fds, flags) < 0);
+      readable = TAbstractSocket(fds[0], NoThrow);
+      writeable = TAbstractSocket(fds[1], NoThrow);
     }
 
     /* Construct both ends of a socket. */
-    static void SocketPair(TFd &lhs, TFd &rhs, int domain, int type,
+    static void SocketPair(TAbstractSocket &lhs, TAbstractSocket &rhs, int domain, int type,
         int proto = 0) {
       assert(&lhs);
       assert(&rhs);
       int fds[2];
-      IfLt0(socketpair(domain, type, proto, fds));
-      lhs = TFd(fds[0], NoThrow);
-      rhs = TFd(fds[1], NoThrow);
+      Base::IfLt0(socketpair(domain, type, proto, fds));
+      lhs = TAbstractSocket(fds[0], NoThrow);
+      rhs = TAbstractSocket(fds[1], NoThrow);
     }
 
 
@@ -306,14 +413,19 @@ namespace Base {
     enum TNoThrow { NoThrow };
 
     /* Constuctor used by Pipe() and SocketPair(). */
-    TFd(int os_handle, TNoThrow) noexcept
-        : OsHandle(os_handle) {}
+    TAbstractSocket(int os_handle, TNoThrow) noexcept
+      : OsHandle{os_handle}, useSSL {false} {
+    }
 
     /* The naked file descriptor we wrap.  This can be -1. */
     int OsHandle;
-  };  // TFd
 
-  /* Wrappers of stdin (0), stdout (1), and stderr (2). */
-  extern const TFd In, Out, Err;
+    /* Are we using SSL for this socket or not? */
+    bool useSSL;
+    // The SSL connection
+    SSL *thisSsl;
 
-}  // Base
+  };  // TAbstractSocket
+
+
+}  // namespace SSL_config

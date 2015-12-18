@@ -20,21 +20,23 @@
    Implements <base/fd.h>.
  */
 
-#include <base/fd.h>
+#include <ssl/abstract_socket.h>
 
 #include <poll.h>
 #include <unistd.h>
 #include <sys/fcntl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <syslog.h>
 
 #include <base/error_utils.h>
 #include <base/time.h>
 
+using namespace SSL_config;
 using namespace Base;
 using namespace std;
 
-bool TFd::IsReadable(int timeout) const {
+bool TAbstractSocket::IsReadable(int timeout) const {
   assert(this);
   pollfd p;
   p.fd = OsHandle;
@@ -45,11 +47,24 @@ bool TFd::IsReadable(int timeout) const {
 }
 
 
-size_t TFd::ReadAtMost(void *buf, size_t max_size) {
-  return IfLt0(read(OsHandle, buf, max_size));
+size_t TAbstractSocket::ReadAtMost(void *buf, size_t max_size) {
+
+  if (useSSL) {
+    syslog(LOG_INFO, "Try to SSL_read %d bytes", static_cast<int>(max_size));
+    int bytes_read = SSL_read(thisSsl, buf, max_size);
+    if (bytes_read < 0){
+      int sslerr = SSL_get_error(thisSsl, bytes_read);
+      syslog(LOG_ERR, "Failed to read from SSL socket: %d\n", sslerr);
+      throw std::runtime_error("Failed to read from SSL socket: " + std::to_string(sslerr));
+    } else {
+      return bytes_read;
+    }
+  } else {
+    return IfLt0(read(OsHandle, buf, max_size));
+  }
 }
 
-size_t TFd::ReadAtMost(void *buf, size_t max_size, int timeout_ms) {
+size_t TAbstractSocket::ReadAtMost(void *buf, size_t max_size, int timeout_ms) {
   if (timeout_ms >= 0) {
     struct pollfd event;
     event.fd = OsHandle;
@@ -65,14 +80,26 @@ size_t TFd::ReadAtMost(void *buf, size_t max_size, int timeout_ms) {
   return ReadAtMost(buf, max_size);
 }
 
-size_t TFd::WriteAtMost(const void *buf, size_t max_size) {
+size_t TAbstractSocket::WriteAtMost(const void *buf, size_t max_size) {
   struct stat stat;
   IfLt0(fstat(OsHandle, &stat));
-  return IfLt0(S_ISSOCK(stat.st_mode) ?
-      send(OsHandle, buf, max_size, MSG_NOSIGNAL) : write(OsHandle, buf, max_size));
+  if (useSSL){
+    syslog(LOG_INFO, "Try to SSL_write %d bytes", static_cast<int>(max_size));
+    int nbsent = SSL_write(thisSsl, buf, max_size);
+    if (nbsent <=0 ){
+      int sslerr = SSL_get_error(thisSsl, nbsent);
+      syslog(LOG_ERR, "Failed to write to SSL socket: %d\n", sslerr);
+      throw std::runtime_error("Failed to write to SSL socket: " + std::to_string(sslerr));
+    }
+    return nbsent;
+  } else {
+    return IfLt0(S_ISSOCK(stat.st_mode) ?
+		 send(OsHandle, buf, max_size, MSG_NOSIGNAL) : 
+		 write(OsHandle, buf, max_size));
+  }
 }
 
-size_t TFd::WriteAtMost(const void *buf, size_t max_size,
+size_t TAbstractSocket::WriteAtMost(const void *buf, size_t max_size,
     int timeout_ms) {
   if (timeout_ms >= 0) {
     struct pollfd event;
@@ -89,10 +116,13 @@ size_t TFd::WriteAtMost(const void *buf, size_t max_size,
   return WriteAtMost(buf, max_size);
 }
 
-bool TFd::TryReadExactly(void *buf, size_t size) {
+bool TAbstractSocket::TryReadExactly(void *buf, size_t size) {
   char *csr = static_cast<char *>(buf);
   char *end = csr + size;
 
+  if (useSSL) {
+    syslog(LOG_INFO, "Try to SSL_read exactly %d bytes", static_cast<int>(size));
+  }
   while (csr < end) {
     size_t actual_size = ReadAtMost(csr, end - csr);
 
@@ -110,7 +140,7 @@ bool TFd::TryReadExactly(void *buf, size_t size) {
   return true;
 }
 
-bool TFd::TryReadExactly(void *buf, size_t size, int timeout_ms) {
+bool TAbstractSocket::TryReadExactly(void *buf, size_t size, int timeout_ms) {
   if (timeout_ms < 0) {
     return TryReadExactly(buf, size);
   }
@@ -119,6 +149,9 @@ bool TFd::TryReadExactly(void *buf, size_t size, int timeout_ms) {
     return true;
   }
 
+  if (useSSL) {
+    syslog(LOG_INFO, "Try to SSL_read exactly %d bytes", static_cast<int>(size));
+  }
   char *csr = static_cast<char *>(buf);
   char *end = csr + size;
   const clockid_t CLOCK_TYPE = CLOCK_MONOTONIC_RAW;
@@ -151,11 +184,13 @@ bool TFd::TryReadExactly(void *buf, size_t size, int timeout_ms) {
   return true;
 }
 
-bool TFd::TryWriteExactly(const void *buf,
-    size_t size) {
+bool TAbstractSocket::TryWriteExactly(const void *buf, size_t size) {
   const char *csr = static_cast<const char *>(buf);
   const char *end = csr + size;
 
+  if (useSSL) {
+    syslog(LOG_INFO, "Try to SSL_write exactly %d bytes", static_cast<int>(size));
+  }
   while (csr < end) {
     size_t actual_size = WriteAtMost(csr, end - csr);
 
@@ -173,7 +208,7 @@ bool TFd::TryWriteExactly(const void *buf,
   return true;
 }
 
-bool TFd::TryWriteExactly(const void *buf, size_t size,
+bool TAbstractSocket::TryWriteExactly(const void *buf, size_t size,
     int timeout_ms) {
   if (timeout_ms < 0) {
     return TryWriteExactly(buf, size);
@@ -183,6 +218,9 @@ bool TFd::TryWriteExactly(const void *buf, size_t size,
     return true;
   }
 
+  if (useSSL) {
+    syslog(LOG_INFO, "Try to SSL_write exactly %d bytes", static_cast<int>(size));
+  }
   const char *csr = static_cast<const char *>(buf);
   const char *end = csr + size;
   const clockid_t CLOCK_TYPE = CLOCK_MONOTONIC_RAW;
@@ -215,17 +253,15 @@ bool TFd::TryWriteExactly(const void *buf, size_t size,
   return true;
 }
 
-void TFd::SetCloseOnExec() {
+void TAbstractSocket::SetCloseOnExec() {
   int flags;
   IfLt0(flags = fcntl(OsHandle, F_GETFD, 0));
   IfLt0(fcntl(OsHandle, F_SETFD, flags | FD_CLOEXEC));
 }
 
-void TFd::SetNonBlocking() {
+void TAbstractSocket::SetNonBlocking() {
   int flags;
   IfLt0(flags = fcntl(OsHandle, F_GETFL, 0));
   IfLt0(fcntl(OsHandle, F_SETFL, flags | O_NONBLOCK));
 }
-
-const TFd Base::In(0), Base::Out(1), Base::Err(2);
 

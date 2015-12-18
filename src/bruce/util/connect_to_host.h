@@ -26,6 +26,8 @@
 #include <netinet/in.h>
 
 #include <base/fd.h>
+#include <ssl/abstract_socket.h>
+
 
 namespace Bruce {
 
@@ -35,11 +37,21 @@ namespace Bruce {
        return, if result_socket.IsOpen() returns true then the connection
        attempt was successful.  Otherwise, the connection attempt failed. */
     void ConnectToHost(const char *host_name, in_port_t port,
-        Base::TFd &result_socket);
+		       Base::TFd &result_socket);
 
     inline void ConnectToHost(const std::string &host_name, in_port_t port,
-        Base::TFd &result_socket) {
+			      Base::TFd &result_socket) {
       ConnectToHost(host_name.c_str(), port, result_socket);
+    }
+
+    void ConnectToHost(const char *host_name, in_port_t port,
+		       SSL_config::TAbstractSocket &result_socket,
+		       bool useSsl = false);
+
+    inline void ConnectToHost(const std::string &host_name, in_port_t port,
+			      SSL_config::TAbstractSocket &result_socket,
+			      bool useSsl = false) {
+      ConnectToHost(host_name.c_str(), port, result_socket, useSsl);
     }
 
   }  // Util

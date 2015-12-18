@@ -31,6 +31,16 @@ using namespace Bruce;
 using namespace Bruce::MockKafkaServer;
 using namespace Bruce::Util;
 
+// hack
+namespace Bruce {
+
+  namespace MockKafkaServer {
+
+    bool IsUsingSSL { false };
+
+  }
+}
+
 static void ParseArgs(int argc, char *argv[], TConfig &config) {
   using namespace TCLAP;
   const std::string prog_name = Basename(argv[0]);
@@ -41,6 +51,13 @@ static void ParseArgs(int argc, char *argv[], TConfig &config) {
     CmdLine cmd("Mock Kafka server for testing Bruce.", ' ', bruce_build_id);
     SwitchArg arg_log_echo("", "log_echo", "Echo syslog messages to standard "
         "error.", cmd, config.LogEcho);
+    SwitchArg arg_use_ssl("", "use_ssl", "Use SSL in communication with Bruce. "
+                          "Default is /etc/ssl/certs/kafka_server.pem", 
+			  cmd, config.UseSSL);
+    ValueArg<decltype(config.ServerCert)> arg_server_cert("",
+			  "cert", "Absolute path to the server SSL certificate.", 
+			  false, config.ServerCert, "PATH");
+    cmd.add(arg_server_cert);
     ValueArg<decltype(config.ProtocolVersion)> arg_protocol_version("",
         "protocol_version", "Version of Kafka protocol to use (currently only "
         "0 is supported).", false, config.ProtocolVersion, "VERSION");
@@ -62,6 +79,8 @@ static void ParseArgs(int argc, char *argv[], TConfig &config) {
         "output file for all clients", cmd, config.SingleOutputFile);
     cmd.parse(argc, &arg_vec[0]);
     config.LogEcho = arg_log_echo.getValue();
+    config.UseSSL = arg_use_ssl.getValue();
+    config.ServerCert = arg_server_cert.getValue();
     config.ProtocolVersion = arg_protocol_version.getValue();
     config.QuietLevel = arg_quiet_level.getValue();
     config.SetupFile = arg_setup_file.getValue();
@@ -78,6 +97,11 @@ TConfig::TConfig(int argc, char *argv[])
       ProtocolVersion(0),
       QuietLevel(0),
       CmdPort(9080),
-      SingleOutputFile(false) {
+      SingleOutputFile(false),
+      UseSSL(false),
+      ServerCert("/etc/ssl/certs/kafka_server.pem") {
   ParseArgs(argc, argv, *this);
+  if (UseSSL){
+    IsUsingSSL = true;
+  }
 }

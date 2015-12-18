@@ -25,6 +25,7 @@
 #include <socket/db/error.h>
 
 using namespace Base;
+using namespace SSL_config;
 using namespace Socket::Db;
 
 TCursor::TCursor(const char *node, const char *serv, int family, int socktype,
@@ -48,6 +49,13 @@ TFd TCursor::NewCompatSocket() const {
   assert(this);
   Freshen();
   return TFd(socket(Csr->ai_family, Csr->ai_socktype, Csr->ai_protocol));
+}
+
+TAbstractSocket TCursor::NewAbstractSocket(bool useSSL) const {
+  assert(this);
+  Freshen();
+  return TAbstractSocket(socket(Csr->ai_family, Csr->ai_socktype, Csr->ai_protocol),
+			 useSSL);
 }
 
 void TCursor::TryFreshen() const {

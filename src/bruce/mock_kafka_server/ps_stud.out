@@ -1,0 +1,9 @@
+mats     11127     1  0 13:24 ?        00:00:00 stud --daemon --tls -q -s -f localhost,8443 -b localhost,59231 /home/mats/ssl-certs/server.pem
+mats     11128 11127  0 13:24 ?        00:00:00 stud --daemon --tls -q -s -f localhost,8443 -b localhost,59231 /home/mats/ssl-certs/server.pem
+mats     11131     1  0 13:24 ?        00:00:00 stud --daemon --tls -q -s -f localhost,8444 -b localhost,49697 /home/mats/ssl-certs/server.pem
+mats     11133 11131  0 13:24 ?        00:00:00 stud --daemon --tls -q -s -f localhost,8444 -b localhost,49697 /home/mats/ssl-certs/server.pem
+mats     11901     1  0 13:39 ?        00:00:00 stud --daemon --tls -q -s -f localhost,8443 -b localhost,60925 /home/mats/ssl-certs/server.pem
+mats     11902 11901  0 13:39 ?        00:00:00 stud --daemon --tls -q -s -f localhost,8443 -b localhost,60925 /home/mats/ssl-certs/server.pem
+mats     11905     1  0 13:39 ?        00:00:00 stud --daemon --tls -q -s -f localhost,8444 -b localhost,45750 /home/mats/ssl-certs/server.pem
+mats     11907 11905  0 13:39 ?        00:00:00 stud --daemon --tls -q -s -f localhost,8444 -b localhost,45750 /home/mats/ssl-certs/server.pem
+mats     11920 23826  0 13:39 pts/3    00:00:00 grep --color=auto stud

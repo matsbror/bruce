@@ -34,6 +34,7 @@
 #include <socket/db/error.h>
 
 using namespace Base;
+using namespace SSL_config;
 using namespace Bruce;
 using namespace Bruce::KafkaProto;
 using namespace Bruce::Util;
@@ -71,12 +72,16 @@ TMetadataFetcher::TMetadataFetcher(const TWireProtocol &kafka_protocol)
       MetadataRequest(CreateMetadataRequest(kafka_protocol)) {
 }
 
-bool TMetadataFetcher::Connect(const char *host_name, in_port_t port) {
+bool TMetadataFetcher::Connect(const char *host_name, in_port_t port, bool UseSSL) {
   assert(this);
   Disconnect();
 
+  if (UseSSL){
+    std::cout << "Metadata connect with SSL" << std::endl;
+  }
+
   try {
-    ConnectToHost(host_name, port, Sock);
+    ConnectToHost(host_name, port, Sock, UseSSL);
   } catch (const std::system_error &x) {
     syslog(LOG_ERR, "Failed to connect to host %s port %d for metadata: %s",
            host_name, static_cast<int>(port), x.what());
@@ -177,7 +182,7 @@ bool TMetadataFetcher::SendRequest(const std::vector<uint8_t> &request,
   StartSendMetadataRequest.Increment();
 
   try {
-    if (!TryWriteExactly(Sock, &request[0], request.size(), timeout_ms)) {
+    if (!Sock.TryWriteExactly(&request[0], request.size(), timeout_ms)) {
       SendMetadataRequestFail.Increment();
       syslog(LOG_ERR, "Failed to send metadata request");
       return false;
@@ -216,7 +221,7 @@ bool TMetadataFetcher::ReadResponse(int timeout_ms) {
   size_t byte_count = 0;
 
   try {
-    byte_count = ReadAtMost(Sock, &ResponseBuf[0], ResponseBuf.size(),
+    byte_count = Sock.ReadAtMost(&ResponseBuf[0], ResponseBuf.size(),
                             timeout_ms);
   } catch (const std::system_error &x) {
     if (LostTcpConnection(x)) {
@@ -254,7 +259,7 @@ bool TMetadataFetcher::ReadResponse(int timeout_ms) {
            "extra junk");
   } else if (ResponseBuf.size() > byte_count) {
     try {
-      if (!TryReadExactly(Sock, &ResponseBuf[byte_count],
+      if (!Sock.TryReadExactly(&ResponseBuf[byte_count],
                           ResponseBuf.size() - byte_count, timeout_ms)) {
         ReadMetadataResponse2Fail.Increment();
         syslog(LOG_ERR, "Router thread failed to read metadata response");

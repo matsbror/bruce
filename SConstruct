@@ -130,7 +130,7 @@ check_version_file(out.Dir('bruce').Dir('client').File('build_id.c').
         get_abspath())
 
 # Environment.
-prog_libs = {'pthread', 'dl', 'rt'}
+prog_libs = {'pthread', 'dl', 'rt', 'ssl', 'crypto'}
 gtest_libs = {'gtest', 'gtest_main', 'pthread'}
 env = Environment(CFLAGS=['-Wwrite-strings'],
                   CCFLAGS=['-Wall', '-Wextra', '-Werror', '-Wformat=2',

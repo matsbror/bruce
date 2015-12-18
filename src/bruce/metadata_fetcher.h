@@ -28,7 +28,8 @@
 
 #include <netinet/in.h>
 
-#include <base/fd.h>
+#include <ssl/abstract_socket.h>
+//#include <base/fd.h>
 #include <base/no_copy_semantics.h>
 #include <bruce/kafka_proto/wire_protocol.h>
 #include <bruce/metadata.h>
@@ -59,12 +60,12 @@ namespace Bruce {
         const KafkaProto::TWireProtocol &kafka_protocol);
 
     /* Return true on success or false on failure. */
-    bool Connect(const char *host_name, in_port_t port);
+    bool Connect(const char *host_name, in_port_t port, bool UseSSL = false);
 
     /* Return true on success or false on failure. */
-    bool Connect(const std::string &host_name, in_port_t port) {
+    bool Connect(const std::string &host_name, in_port_t port, bool UseSSL = false) {
       assert(this);
-      return Connect(host_name.c_str(), port);
+      return Connect(host_name.c_str(), port, UseSSL);
     }
 
     void Disconnect() noexcept {
@@ -108,7 +109,8 @@ namespace Bruce {
        constructor. */
     const std::vector<uint8_t> MetadataRequest;
 
-    Base::TFd Sock;
+    SSL_config::TAbstractSocket Sock;
+    //Base::TFd Sock;
 
     std::vector<uint8_t> ResponseBuf;
   };  // TMetadataFetcher

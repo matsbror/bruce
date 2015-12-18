@@ -195,7 +195,7 @@
              hosts are recommended to guard against the case where a single
              specified host is down.
           -->
-        <broker host="localhost" port="9092" />
+        <broker host="localhost" port="8443" />
         <!-- <broker host="broker_host_2" port="9092" /> -->
     </initialBrokers>
 </bruceConfig>

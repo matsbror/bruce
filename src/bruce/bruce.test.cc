@@ -414,7 +414,7 @@ namespace {
     }
   };  // TBruceTest
 
-
+#if 1
   // First test
   TEST_F(TBruceTest, SuccessfulDeliveryTest) {
     std::string topic("scooby_doo");
@@ -520,6 +520,145 @@ namespace {
     server.Join();
     ASSERT_EQ(server.GetBruceReturnValue(), EXIT_SUCCESS);
   }
+
+  // Same as Deliverytest, but now with SSL
+  TEST_F(TBruceTest, SSLDeliveryTest) {
+    std::string topic("scooby_doo");
+    std::vector<std::string> kafka_config;
+    CreateKafkaConfig(topic.c_str(), kafka_config);
+    const bool useSSL {true};
+    TMockKafkaConfig kafka(kafka_config, useSSL);
+    kafka.StartKafka();
+    Bruce::MockKafkaServer::TMainThread &mock_kafka = *kafka.MainThread;
+
+    /* Translate virtual port from the mock Kafka server setup file into a
+       physical port.  See big comment in <bruce/mock_kafka_server/port_map.h>
+       for an explanation of what is going on here. */
+    in_port_t port1 = mock_kafka.VirtualPortToPhys(10000);
+    assert(port1);
+    in_port_t port2 = mock_kafka.VirtualPortToPhys(10001);
+    assert(port2);
+
+    /* Put stud between Bruce and MockKafkaServer 
+       Map the backend of stud to the port that the Mock Kafka Server
+       listens to.
+       Start one instance of stud for each broker (two) with consective 
+       inports starting from 8443
+     */
+    in_port_t stud_port {8443};
+    // First stud instance
+    std::string stud1_command = "stud --daemon --tls -q -s -f localhost," + 
+      std::to_string(stud_port) + " -b localhost," + 
+      std::to_string(port1) + " /home/mats/ssl-certs/server.pem";
+    std::cout << "Start stud 1 with: " << stud1_command << std::endl;
+    system(stud1_command.c_str());
+    // Second stud instance
+    std::string stud2_command = "stud --daemon --tls -q -s -f localhost," + 
+      std::to_string(stud_port+1) + " -b localhost," + 
+      std::to_string(port2) + " /home/mats/ssl-certs/server.pem";
+    std::cout << "Start stud 2 with: " << stud2_command << std::endl;
+    system(stud2_command.c_str());
+
+    std::cout << "Continue after starting stud(s)!" << std::endl;
+
+    // Start Bruce with SSL talking to stud
+    TBruceTestServer server(stud_port, 1024, 
+			    CreateSimpleBruceConf(stud_port), USESSL);
+    server.Start();
+    TBruceServer *bruce = server.GetBruce();
+    ASSERT_TRUE(bruce != nullptr);
+
+    if (bruce == nullptr) {
+      return;
+    }
+
+    TBruceClientSocket sock;
+    int ret = sock.Bind(server.GetUnixSocketName());
+    ASSERT_EQ(ret, BRUCE_OK);
+    std::vector<std::string> topics;
+    std::vector<std::string> bodies;
+    topics.push_back(topic);
+    bodies.push_back("Scooby");
+    topics.push_back(topic);
+    bodies.push_back("Shaggy");
+    topics.push_back(topic);
+    bodies.push_back("Velma");
+    topics.push_back(topic);
+    bodies.push_back("Daphne");
+    std::vector<uint8_t> dg_buf;
+
+    for (size_t i = 0; i < topics.size(); ++i) {
+      MakeDg(dg_buf, topics[i], bodies[i]);
+      ret = sock.Send(&dg_buf[0], dg_buf.size());
+      ASSERT_EQ(ret, BRUCE_OK);
+    }
+
+    for (size_t i = 0; (bruce->GetAckCount() < 4) && (i < 3000); ++i) {
+      SleepMilliseconds(10);
+    }
+
+    ASSERT_EQ(bruce->GetAckCount(), 4U);
+    using TTracker = TReceivedRequestTracker;
+    std::list<TTracker::TRequestInfo> received;
+    std::vector<std::string> expected_msgs;
+    assert(topics.size() == bodies.size());
+
+    for (size_t i = 0; i < topics.size(); ++i) {
+      expected_msgs.push_back(bodies[i]);
+    }
+
+    for (size_t i = 0; i < 3000; ++i) {
+      mock_kafka.NonblockingGetHandledRequests(received);
+
+      for (auto &item : received) {
+        if (item.MetadataRequestInfo.IsKnown()) {
+          ASSERT_EQ(item.MetadataRequestInfo->ReturnedErrorCode, 0);
+        } else if (item.ProduceRequestInfo.IsKnown()) {
+          const TTracker::TProduceRequestInfo &info = *item.ProduceRequestInfo;
+          ASSERT_EQ(info.Topic, topic);
+          ASSERT_EQ(info.ReturnedErrorCode, 0);
+          auto iter = std::find(expected_msgs.begin(), expected_msgs.end(),
+                                info.FirstMsgValue);
+
+          if (iter == expected_msgs.end()) {
+            ASSERT_TRUE(false);
+          } else {
+            expected_msgs.erase(iter);
+          }
+        } else {
+          ASSERT_TRUE(false);
+        }
+      }
+
+      received.clear();
+
+      if (expected_msgs.empty()) {
+        break;
+      }
+
+      SleepMilliseconds(10);
+    }
+
+    ASSERT_TRUE(expected_msgs.empty());
+
+    TAnomalyTracker::TInfo bad_stuff;
+    bruce->GetAnomalyTracker().GetInfo(bad_stuff);
+    ASSERT_EQ(bad_stuff.DiscardTopicMap.size(), 0U);
+    ASSERT_EQ(bad_stuff.DuplicateTopicMap.size(), 0U);
+    ASSERT_EQ(bad_stuff.BadTopics.size(), 0U);
+    ASSERT_EQ(bad_stuff.MalformedMsgCount, 0U);
+    ASSERT_EQ(bad_stuff.UnsupportedVersionMsgCount, 0U);
+
+    server.RequestShutdown();
+    server.Join();
+    ASSERT_EQ(server.GetBruceReturnValue(), EXIT_SUCCESS);
+
+    // take down the stud processes
+    system("echo \"#!/bin/bash\" > /tmp/rmstud.sh");
+    system("ps -ef | grep stud | awk '{if ($8==\"stud\") print \"kill -9 \" $2}' >> /tmp/rmstud.sh");
+    system("bash /tmp/rmstud.sh");
+
+  } // end SSLDeliveryTest
 
 
 
@@ -1167,146 +1306,7 @@ namespace {
     server.Join();
     ASSERT_EQ(server.GetBruceReturnValue(), EXIT_SUCCESS);
   }
-
-
-  // Same as Deliverytest, but now with SSL
-  TEST_F(TBruceTest, SSLDeliveryTest) {
-    std::string topic("scooby_doo");
-    std::vector<std::string> kafka_config;
-    CreateKafkaConfig(topic.c_str(), kafka_config);
-    const bool useSSL {true};
-    TMockKafkaConfig kafka(kafka_config, useSSL);
-    kafka.StartKafka();
-    Bruce::MockKafkaServer::TMainThread &mock_kafka = *kafka.MainThread;
-
-    /* Translate virtual port from the mock Kafka server setup file into a
-       physical port.  See big comment in <bruce/mock_kafka_server/port_map.h>
-       for an explanation of what is going on here. */
-    in_port_t port1 = mock_kafka.VirtualPortToPhys(10000);
-    assert(port1);
-    in_port_t port2 = mock_kafka.VirtualPortToPhys(10001);
-    assert(port2);
-
-    /* Put stud between Bruce and MockKafkaServer 
-       Map the backend of stud to the port that the Mock Kafka Server
-       listens to.
-       Start one instance of stud for each broker (two) with consective 
-       inports starting from 8443
-     */
-    in_port_t stud_port {8443};
-    // First stud instance
-    std::string stud1_command = "stud --daemon --tls -q -s -f localhost," + 
-      std::to_string(stud_port) + " -b localhost," + 
-      std::to_string(port1) + " /home/mats/ssl-certs/server.pem";
-    std::cout << "Start stud 1 with: " << stud1_command << std::endl;
-    system(stud1_command.c_str());
-    // Second stud instance
-    std::string stud2_command = "stud --daemon --tls -q -s -f localhost," + 
-      std::to_string(stud_port+1) + " -b localhost," + 
-      std::to_string(port2) + " /home/mats/ssl-certs/server.pem";
-    std::cout << "Start stud 2 with: " << stud2_command << std::endl;
-    system(stud2_command.c_str());
-
-    std::cout << "Continue after starting stud(s)!" << std::endl;
-
-    // Start Bruce with SSL talking to stud
-    TBruceTestServer server(stud_port, 1024, 
-			    CreateSimpleBruceConf(stud_port), USESSL);
-    server.Start();
-    TBruceServer *bruce = server.GetBruce();
-    ASSERT_TRUE(bruce != nullptr);
-
-    if (bruce == nullptr) {
-      return;
-    }
-
-    TBruceClientSocket sock;
-    int ret = sock.Bind(server.GetUnixSocketName());
-    ASSERT_EQ(ret, BRUCE_OK);
-    std::vector<std::string> topics;
-    std::vector<std::string> bodies;
-    topics.push_back(topic);
-    bodies.push_back("Scooby");
-    topics.push_back(topic);
-    bodies.push_back("Shaggy");
-    topics.push_back(topic);
-    bodies.push_back("Velma");
-    topics.push_back(topic);
-    bodies.push_back("Daphne");
-    std::vector<uint8_t> dg_buf;
-
-    for (size_t i = 0; i < topics.size(); ++i) {
-      MakeDg(dg_buf, topics[i], bodies[i]);
-      ret = sock.Send(&dg_buf[0], dg_buf.size());
-      ASSERT_EQ(ret, BRUCE_OK);
-    }
-
-    for (size_t i = 0; (bruce->GetAckCount() < 4) && (i < 3000); ++i) {
-      SleepMilliseconds(10);
-    }
-
-    ASSERT_EQ(bruce->GetAckCount(), 4U);
-    using TTracker = TReceivedRequestTracker;
-    std::list<TTracker::TRequestInfo> received;
-    std::vector<std::string> expected_msgs;
-    assert(topics.size() == bodies.size());
-
-    for (size_t i = 0; i < topics.size(); ++i) {
-      expected_msgs.push_back(bodies[i]);
-    }
-
-    for (size_t i = 0; i < 3000; ++i) {
-      mock_kafka.NonblockingGetHandledRequests(received);
-
-      for (auto &item : received) {
-        if (item.MetadataRequestInfo.IsKnown()) {
-          ASSERT_EQ(item.MetadataRequestInfo->ReturnedErrorCode, 0);
-        } else if (item.ProduceRequestInfo.IsKnown()) {
-          const TTracker::TProduceRequestInfo &info = *item.ProduceRequestInfo;
-          ASSERT_EQ(info.Topic, topic);
-          ASSERT_EQ(info.ReturnedErrorCode, 0);
-          auto iter = std::find(expected_msgs.begin(), expected_msgs.end(),
-                                info.FirstMsgValue);
-
-          if (iter == expected_msgs.end()) {
-            ASSERT_TRUE(false);
-          } else {
-            expected_msgs.erase(iter);
-          }
-        } else {
-          ASSERT_TRUE(false);
-        }
-      }
-
-      received.clear();
-
-      if (expected_msgs.empty()) {
-        break;
-      }
-
-      SleepMilliseconds(10);
-    }
-
-    ASSERT_TRUE(expected_msgs.empty());
-
-    TAnomalyTracker::TInfo bad_stuff;
-    bruce->GetAnomalyTracker().GetInfo(bad_stuff);
-    ASSERT_EQ(bad_stuff.DiscardTopicMap.size(), 0U);
-    ASSERT_EQ(bad_stuff.DuplicateTopicMap.size(), 0U);
-    ASSERT_EQ(bad_stuff.BadTopics.size(), 0U);
-    ASSERT_EQ(bad_stuff.MalformedMsgCount, 0U);
-    ASSERT_EQ(bad_stuff.UnsupportedVersionMsgCount, 0U);
-
-    server.RequestShutdown();
-    server.Join();
-    ASSERT_EQ(server.GetBruceReturnValue(), EXIT_SUCCESS);
-
-    // take down the stud processes
-    system("echo \"#!/bin/bash\" > /tmp/rmstud.sh");
-    system("ps -ef | grep stud | awk '{if ($8==\"stud\") print \"kill -9 \" $2}' >> /tmp/rmstud.sh");
-    system("bash /tmp/rmstud.sh");
-
-  } // end SSLDeliveryTest
+#endif
 
 
 

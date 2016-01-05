@@ -236,7 +236,7 @@ namespace {
       //args.push_back("--log_echo"); // for debug
       args.push_back("--use_ssl");
       args.push_back("--ssl_client_cert");
-      args.push_back("client_cert.pem");
+      args.push_back("/home/mats/ssl-certs/client.pem");
     } // UseSSL
     args.push_back(nullptr);
 
@@ -414,7 +414,6 @@ namespace {
     }
   };  // TBruceTest
 
-#if 1
   // First test
   TEST_F(TBruceTest, SuccessfulDeliveryTest) {
     std::string topic("scooby_doo");
@@ -657,9 +656,9 @@ namespace {
     system("echo \"#!/bin/bash\" > /tmp/rmstud.sh");
     system("ps -ef | grep stud | awk '{if ($8==\"stud\") print \"kill -9 \" $2}' >> /tmp/rmstud.sh");
     system("bash /tmp/rmstud.sh");
+    system("rm /tmp/rmstud.sh");
 
   } // end SSLDeliveryTest
-
 
 
   TEST_F(TBruceTest, KeyValueTest) {
@@ -1306,7 +1305,6 @@ namespace {
     server.Join();
     ASSERT_EQ(server.GetBruceReturnValue(), EXIT_SUCCESS);
   }
-#endif
 
 
 

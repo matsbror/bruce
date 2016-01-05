@@ -1,0 +1,209 @@
+
+(gdb) thread apply all bt
+
+Thread 8 (Thread 0x7f0488992700 (LWP 11344)):
+#0  0x00007f0488d861ef in __GI_ppoll (fds=0x7f0487cff800, nfds=4, timeout=<optimized out>,
+    sigmask=0x7f0488991980) at ../sysdeps/unix/sysv/linux/ppoll.c:56
+#1  0x00000000006bbd4b in Fiber::TDispatcher::Dispatch (this=0x600c00005cc0, max_timeout=...,
+    mask_set=0x7f0488991980) at src/fiber/dispatcher.cc:327
+#2  0x00000000006bb06a in Fiber::TDispatcher::Run (this=0x600c00005cc0, grace_period=...,
+    allow_signals=..., shutdown_signal_number=2) at src/fiber/dispatcher.cc:214
+#3  0x0000000000614dbf in Bruce::MockKafkaServer::TServer::Run (this=0x603a0001f1f8)
+    at src/bruce/mock_kafka_server/server.cc:100
+#4  0x0000000000604266 in Bruce::MockKafkaServer::TMainThread::Run (this=0x603a0001f1c0)
+    at src/bruce/mock_kafka_server/main_thread.cc:62
+#5  0x000000000073055b in Thread::TFdManagedThread::RunAndTerminate (this=0x603a0001f1c0)
+    at src/thread/fd_managed_thread.cc:135
+#6  0x0000000000732e7f in std::_Mem_fn<void (Thread::TFdManagedThread::*)()>::operator()<, void>(Thread::TFdManagedThread*) const (this=0x600e0000ca70, __object=0x603a0001f1c0)
+    at /usr/include/c++/4.8/functional:601
+#7  0x0000000000732d18 in std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (
+    this=0x600e0000ca70,
+    __args=<unknown type in /home/mats/bruce/bruce/out/debug/bruce/bruce.test, CU 0xfa2e37, DIE 0xfb98a1>) at /usr/include/c++/4.8/functional:1296
+#8  0x0000000000732c74 in std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)>::operator()<, void>() (this=0x600e0000ca70)
+    at /usr/include/c++/4.8/functional:1355
+#9  0x0000000000732bc6 in std::_Bind_simple<std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)> ()>::_M_invoke<>(std::_Index_tuple<>) (this=0x600e0000ca70)
+    at /usr/include/c++/4.8/functional:1732
+#10 0x0000000000732b1d in std::_Bind_simple<std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)> ()>::operator()() (this=0x600e0000ca70)
+    at /usr/include/c++/4.8/functional:1720
+#11 0x0000000000732ab6 in std::thread::_Impl<std::_Bind_simple<std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)> ()> >::_M_run() (this=0x600e0000ca58)
+    at /usr/include/c++/4.8/thread:115
+#12 0x00007f048962ba40 in ?? () from /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+#13 0x00007f048a748b98 in ?? () from /usr/lib/x86_64-linux-gnu/libasan.so.0
+#14 0x00007f0489886182 in start_thread (arg=0x7f0488992700) at pthread_create.c:312
+#15 0x00007f0488d9347d in clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:111
+
+Thread 7 (Thread 0x7f0487178700 (LWP 11349)):
+#0  0x00007f0488d8612d in poll () at ../sysdeps/unix/syscall-template.S:81
+#1  0x00000000006071b1 in Bruce::MockKafkaServer::TMockKafkaWorker::TryReadExactlyOrShutdown (
+    this=0x601c0000dda0, fd=12, buf=0x600400007f90, size=2)
+    at src/bruce/mock_kafka_server/mock_kafka_worker.cc:55
+#2  0x00000000005f699d in Bruce::MockKafkaServer::TCmdWorker::GetCmd (this=0x601c0000dda0)
+    at src/bruce/mock_kafka_server/cmd_worker.cc:66
+#3  0x00000000005f68df in Bruce::MockKafkaServer::TCmdWorker::Run (this=0x601c0000dda0)
+    at src/bruce/mock_kafka_server/cmd_worker.cc:47
+#4  0x000000000073055b in Thread::TFdManagedThread::RunAndTerminate (this=0x601c0000dda0)
+    at src/thread/fd_managed_thread.cc:135
+#5  0x0000000000732e7f in std::_Mem_fn<void (Thread::TFdManagedThread::*)()>::operator()<, void>(Thr---Type <return> to continue, or q <return> to quit---
+ead::TFdManagedThread*) const (this=0x600e00006b10, __object=0x601c0000dda0)
+    at /usr/include/c++/4.8/functional:601
+#6  0x0000000000732d18 in std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (
+    this=0x600e00006b10,
+    __args=<unknown type in /home/mats/bruce/bruce/out/debug/bruce/bruce.test, CU 0xfa2e37, DIE 0xfb98a1>) at /usr/include/c++/4.8/functional:1296
+#7  0x0000000000732c74 in std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)>::operator()<, void>() (this=0x600e00006b10)
+    at /usr/include/c++/4.8/functional:1355
+#8  0x0000000000732bc6 in std::_Bind_simple<std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)> ()>::_M_invoke<>(std::_Index_tuple<>) (this=0x600e00006b10)
+    at /usr/include/c++/4.8/functional:1732
+#9  0x0000000000732b1d in std::_Bind_simple<std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)> ()>::operator()() (this=0x600e00006b10)
+    at /usr/include/c++/4.8/functional:1720
+#10 0x0000000000732ab6 in std::thread::_Impl<std::_Bind_simple<std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)> ()> >::_M_run() (this=0x600e00006af8)
+    at /usr/include/c++/4.8/thread:115
+#11 0x00007f048962ba40 in ?? () from /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+#12 0x00007f048a748b98 in ?? () from /usr/lib/x86_64-linux-gnu/libasan.so.0
+#13 0x00007f0489886182 in start_thread (arg=0x7f0487178700) at pthread_create.c:312
+#14 0x00007f0488d9347d in clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:111
+
+Thread 6 (Thread 0x7f0487c7f700 (LWP 11350)):
+#0  0x00007f0488d861ef in __GI_ppoll (fds=0x7f0487c7e240, nfds=4, timeout=<optimized out>,
+    sigmask=0x605c0000d280) at ../sysdeps/unix/sysv/linux/ppoll.c:56
+#1  0x00000000004fa86b in Bruce::TBruceServer::HandleEvents (this=0x605c0000d280)
+    at src/bruce/bruce_server.cc:430
+#2  0x00000000004f9817 in Bruce::TBruceServer::Run (this=0x605c0000d280)
+    at src/bruce/bruce_server.cc:307
+#3  0x00000000004c9abc in (anonymous namespace)::TBruceTestServer::Run (this=0x7ffceb6e0370)
+    at src/bruce/bruce.test.cc:269
+#4  0x000000000073055b in Thread::TFdManagedThread::RunAndTerminate (this=0x7ffceb6e0370)
+    at src/thread/fd_managed_thread.cc:135
+#5  0x0000000000732e7f in std::_Mem_fn<void (Thread::TFdManagedThread::*)()>::operator()<, void>(Thread::TFdManagedThread*) const (this=0x600e0000ca00, __object=0x7ffceb6e0370)
+    at /usr/include/c++/4.8/functional:601
+#6  0x0000000000732d18 in std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (
+    this=0x600e0000ca00,
+    __args=<unknown type in /home/mats/bruce/bruce/out/debug/bruce/bruce.test, CU 0xfa2e37, DIE 0xfb98a1>) at /usr/include/c++/4.8/functional:1296
+#7  0x0000000000732c74 in std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)>::operator()<, void>() (this=0x600e0000ca00)
+    at /usr/include/c++/4.8/functional:1355
+#8  0x0000000000732bc6 in std::_Bind_simple<std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)> ()>::_M_invoke<>(std::_Index_tuple<>) (this=0x600e0000ca00)
+    at /usr/include/c++/4.8/functional:1732
+#9  0x0000000000732b1d in std::_Bind_simple<std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)> ()>::operator()() (this=0x600e0000ca00)
+---Type <return> to continue, or q <return> to quit---
+    at /usr/include/c++/4.8/functional:1720
+#10 0x0000000000732ab6 in std::thread::_Impl<std::_Bind_simple<std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)> ()> >::_M_run() (this=0x600e0000c9e8)
+    at /usr/include/c++/4.8/thread:115
+#11 0x00007f048962ba40 in ?? () from /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+#12 0x00007f048a748b98 in ?? () from /usr/lib/x86_64-linux-gnu/libasan.so.0
+#13 0x00007f0489886182 in start_thread (arg=0x7f0487c7f700) at pthread_create.c:312
+#14 0x00007f0488d9347d in clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:111
+
+Thread 5 (Thread 0x7f0484760700 (LWP 11351)):
+#0  0x00007f0488d8612d in poll () at ../sysdeps/unix/syscall-template.S:81
+#1  0x000000000069da13 in Bruce::TUnixDgInputAgent::ForwardMessages (this=0x605c0000de70)
+    at src/bruce/unix_dg_input_agent.cc:174
+#2  0x000000000069d0a0 in Bruce::TUnixDgInputAgent::DoRun (this=0x605c0000de70)
+    at src/bruce/unix_dg_input_agent.cc:112
+#3  0x000000000069ce71 in Bruce::TUnixDgInputAgent::Run (this=0x605c0000de70)
+    at src/bruce/unix_dg_input_agent.cc:87
+#4  0x000000000073055b in Thread::TFdManagedThread::RunAndTerminate (this=0x605c0000de70)
+    at src/thread/fd_managed_thread.cc:135
+#5  0x0000000000732e7f in std::_Mem_fn<void (Thread::TFdManagedThread::*)()>::operator()<, void>(Thread::TFdManagedThread*) const (this=0x600e0001aed0, __object=0x605c0000de70)
+    at /usr/include/c++/4.8/functional:601
+#6  0x0000000000732d18 in std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (
+    this=0x600e0001aed0,
+    __args=<unknown type in /home/mats/bruce/bruce/out/debug/bruce/bruce.test, CU 0xfa2e37, DIE 0xfb98a1>) at /usr/include/c++/4.8/functional:1296
+#7  0x0000000000732c74 in std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)>::operator()<, void>() (this=0x600e0001aed0)
+    at /usr/include/c++/4.8/functional:1355
+#8  0x0000000000732bc6 in std::_Bind_simple<std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)> ()>::_M_invoke<>(std::_Index_tuple<>) (this=0x600e0001aed0)
+    at /usr/include/c++/4.8/functional:1732
+#9  0x0000000000732b1d in std::_Bind_simple<std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)> ()>::operator()() (this=0x600e0001aed0)
+    at /usr/include/c++/4.8/functional:1720
+#10 0x0000000000732ab6 in std::thread::_Impl<std::_Bind_simple<std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)> ()> >::_M_run() (this=0x600e0001aeb8)
+    at /usr/include/c++/4.8/thread:115
+#11 0x00007f048962ba40 in ?? () from /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+#12 0x00007f048a748b98 in ?? () from /usr/lib/x86_64-linux-gnu/libasan.so.0
+#13 0x00007f0489886182 in start_thread (arg=0x7f0484760700) at pthread_create.c:312
+#14 0x00007f0488d9347d in clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:111
+
+Thread 4 (Thread 0x7f0485c5d700 (LWP 11352)):
+#0  0x00007f0488d8612d in poll () at ../sysdeps/unix/syscall-template.S:81
+#1  0x000000000048773c in Base::TFd::IsReadable (this=0x605c0000d958, timeout=6200)
+    at src/base/fd.cc:43
+#2  0x0000000000683f54 in Bruce::TRouterThread::GetMetadataBeforeSlowShutdown (this=0x605c0000d950)
+    at src/bruce/router_thread.cc:1534
+#3  0x000000000068461e in Bruce::TRouterThread::GetMetadata (this=0x605c0000d950)
+---Type <return> to continue, or q <return> to quit---
+    at src/bruce/router_thread.cc:1598
+#4  0x0000000000682c5e in Bruce::TRouterThread::HandlePause (this=0x605c0000d950)
+    at src/bruce/router_thread.cc:1370
+#5  0x00000000006801f6 in Bruce::TRouterThread::RespondToPause (this=0x605c0000d950)
+    at src/bruce/router_thread.cc:991
+#6  0x000000000068192c in Bruce::TRouterThread::DoRun (this=0x605c0000d950)
+    at src/bruce/router_thread.cc:1204
+#7  0x0000000000679f03 in Bruce::TRouterThread::Run (this=0x605c0000d950)
+    at src/bruce/router_thread.cc:147
+#8  0x000000000073055b in Thread::TFdManagedThread::RunAndTerminate (this=0x605c0000d950)
+    at src/thread/fd_managed_thread.cc:135
+#9  0x0000000000732e7f in std::_Mem_fn<void (Thread::TFdManagedThread::*)()>::operator()<, void>(Thread::TFdManagedThread*) const (this=0x600e0001ae60, __object=0x605c0000d950)
+    at /usr/include/c++/4.8/functional:601
+#10 0x0000000000732d18 in std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)>::__call<void, , 0ul>(std::tuple<>&&, std::_Index_tuple<0ul>) (
+    this=0x600e0001ae60,
+    __args=<unknown type in /home/mats/bruce/bruce/out/debug/bruce/bruce.test, CU 0xfa2e37, DIE 0xfb98a1>) at /usr/include/c++/4.8/functional:1296
+#11 0x0000000000732c74 in std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)>::operator()<, void>() (this=0x600e0001ae60)
+    at /usr/include/c++/4.8/functional:1355
+#12 0x0000000000732bc6 in std::_Bind_simple<std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)> ()>::_M_invoke<>(std::_Index_tuple<>) (this=0x600e0001ae60)
+    at /usr/include/c++/4.8/functional:1732
+#13 0x0000000000732b1d in std::_Bind_simple<std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)> ()>::operator()() (this=0x600e0001ae60)
+    at /usr/include/c++/4.8/functional:1720
+#14 0x0000000000732ab6 in std::thread::_Impl<std::_Bind_simple<std::_Bind<std::_Mem_fn<void (Thread::TFdManagedThread::*)()> (Thread::TFdManagedThread*)> ()> >::_M_run() (this=0x600e0001ae48)
+    at /usr/include/c++/4.8/thread:115
+#15 0x00007f048962ba40 in ?? () from /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+#16 0x00007f048a748b98 in ?? () from /usr/lib/x86_64-linux-gnu/libasan.so.0
+#17 0x00007f0489886182 in start_thread (arg=0x7f0485c5d700) at pthread_create.c:312
+#18 0x00007f0488d9347d in clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:111
+
+Thread 3 (Thread 0x7f0485156700 (LWP 11353)):
+#0  0x00007f0488d8ada3 in select () at ../sysdeps/unix/syscall-template.S:81
+#1  0x00000000006eee38 in master_thread (ctx=0x604e0000e180)
+    at src/third_party/mongoose/mongoose.c:4008
+#2  0x00007f048a748b98 in ?? () from /usr/lib/x86_64-linux-gnu/libasan.so.0
+#3  0x00007f0489886182 in start_thread (arg=0x7f0485156700) at pthread_create.c:312
+#4  0x00007f0488d9347d in clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:111
+
+Thread 2 (Thread 0x7f0483c59700 (LWP 11354)):
+#0  pthread_cond_wait@@GLIBC_2.3.2 ()
+    at ../nptl/sysdeps/unix/sysv/linux/x86_64/pthread_cond_wait.S:185
+#1  0x00000000006eda7d in consume_socket (ctx=0x604e0000e180, sp=0x60820001fe68)
+    at src/third_party/mongoose/mongoose.c:3879
+#2  0x00000000006ee444 in worker_thread (ctx=0x604e0000e180)
+    at src/third_party/mongoose/mongoose.c:3915
+---Type <return> to continue, or q <return> to quit---
+#3  0x00007f048a748b98 in ?? () from /usr/lib/x86_64-linux-gnu/libasan.so.0
+#4  0x00007f0489886182 in start_thread (arg=0x7f0483c59700) at pthread_create.c:312
+#5  0x00007f0488d9347d in clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:111
+
+Thread 1 (Thread 0x7f048d8ca780 (LWP 11292)):
+#0  0x00007f048988db9d in nanosleep () at ../sysdeps/unix/syscall-template.S:81
+#1  0x000000000048c957 in Base::SleepMilliseconds (milliseconds=10) at src/base/time_util.cc:41
+#2  0x00000000004cb63d in (anonymous namespace)::GetKeyAndValue (bruce=..., mock_kafka=...,
+    topic=..., key=..., value=..., expected_ack_count=1, expected_msg_count=1,
+    compression_type=Bruce::Conf::None) at src/bruce/bruce.test.cc:395
+#3  0x00000000004d11b5 in (anonymous namespace)::TBruceTest_KeyValueTest_Test::TestBody (
+    this=0x60040000d990) at src/bruce/bruce.test.cc:700
+#4  0x00007f0489ad5a23 in HandleSehExceptionsInMethodIfSupported<testing::Test, void> (
+    location=0x7f0489ad9054 "the test body", method=<optimized out>, object=<optimized out>)
+    at ./src/gtest.cc:2078
+#5  testing::internal::HandleExceptionsInMethodIfSupported<testing::Test, void> (
+    object=object@entry=0x60040000d990, method=<optimized out>,
+    location=location@entry=0x7f0489ad9054 "the test body") at ./src/gtest.cc:2114
+#6  0x00007f0489ac7bb7 in testing::Test::Run (this=this@entry=0x60040000d990)
+    at ./src/gtest.cc:2151
+#7  0x00007f0489ac7c5e in testing::TestInfo::Run (this=0x601e0000ed70) at ./src/gtest.cc:2326
+#8  0x00007f0489ac7d65 in testing::TestCase::Run (this=0x60220001fde0) at ./src/gtest.cc:2444
+#9  0x00007f0489ac8018 in testing::internal::UnitTestImpl::RunAllTests (this=0x60340000fd00)
+    at ./src/gtest.cc:4315
+#10 0x00007f0489ac82c4 in HandleSehExceptionsInMethodIfSupported<testing::internal::UnitTestImpl, bool> (location=<optimized out>, method=<optimized out>, object=<optimized out>)
+    at ./src/gtest.cc:2078
+#11 HandleExceptionsInMethodIfSupported<testing::internal::UnitTestImpl, bool> (
+    location=0x7f0489ada468 "auxiliary test code (environments or event listeners)",
+    method=(bool (testing::internal::UnitTestImpl::*)(testing::internal::UnitTestImpl * const)) 0x7f0489ac7dd0 <testing::internal::UnitTestImpl::RunAllTests()>, object=0x60340000fd00)
+    at ./src/gtest.cc:2114
+#12 testing::UnitTest::Run (this=<optimized out>) at ./src/gtest.cc:3929
+#13 0x00000000004e1efc in RUN_ALL_TESTS () at /usr/include/gtest/gtest.h:2288
+#14 0x00000000004de6f6 in main (argc=1, argv=0x7ffceb6e0738) at src/bruce/bruce.test.cc:1317
+(gdb)

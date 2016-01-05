@@ -97,7 +97,7 @@ namespace SSL_config {
       useSSL = that.useSSL;    
 
       if (useSSL) {
-	SSL_config::TSSL_Init& ssl_Singleton = SSL_config::TSSL_Init::Instance();
+	SSL_config::TSSL_Init& ssl_Singleton = SSL_config::TSSL_Init::Instance("");
 
 	thisSsl = SSL_new(ssl_Singleton.get_ctx());
 
@@ -128,7 +128,7 @@ namespace SSL_config {
       OsHandle = Base::IfLt0(os_handle);
 
       if (useSSL) {
-	SSL_config::TSSL_Init& ssl_Singleton = SSL_config::TSSL_Init::Instance();
+	SSL_config::TSSL_Init& ssl_Singleton = SSL_config::TSSL_Init::Instance("");
 
 	thisSsl = SSL_new(ssl_Singleton.get_ctx());
 	if (!thisSsl) {
@@ -174,27 +174,27 @@ namespace SSL_config {
 
     void ShowCerts() {
       X509 *cert;
-      char *line;
       
       /* get the server's certificate */
       cert = SSL_get_peer_certificate(thisSsl); 
 
       if ( cert != nullptr ) {
-	std::cout << "Server certificates:\n";
-
-	line =  X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
-	std::cout << "Subject: " <<  line << std::endl;
-	free(line);       /* free the malloc'ed string */
-
-	line = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0);
-	std::cout << "Issuer: " << line << std::endl;
-	free(line);       /* free the malloc'ed string */
-	
 	// Verify the certificate
-	if(SSL_get_verify_result(thisSsl) == X509_V_OK){
+	long int ssl_err {SSL_get_verify_result(thisSsl)};
+	if(ssl_err == X509_V_OK){
 	  std::cout << "Certificate verified!"  << std::endl;
 	} else {
+	  std::cout << "Server certificates:\n";
+	  
+	  char *server_cert =  X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
+	  char *client_cert = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0);
+	  
+	  std::cout << "Subject: " <<  server_cert << std::endl;
+	  std::cout << "Issuer: " << client_cert << std::endl;
 	  std::cout << "Certificate not valid!"  << std::endl;
+	  std::cout << "Error code: " << ssl_err << std::endl;
+	  free(server_cert);       /* free the malloc'ed string */
+	  free(client_cert);       /* free the malloc'ed string */
 	}
 	
 	X509_free(cert);     /* free the malloc'ed certificate copy */

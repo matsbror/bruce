@@ -139,7 +139,7 @@ void Bruce::Util::ConnectToHost(const char *host_name, in_port_t port,
 	errcode = ERR_get_error();
       }
 
-      throw std::runtime_error("SSL Connec error: " + 
+      throw std::runtime_error("SSL Connect error: " + 
 			       std::to_string(ssl_err));
     }
     
@@ -147,7 +147,7 @@ void Bruce::Util::ConnectToHost(const char *host_name, in_port_t port,
     std::cout << "[" << SSL_get_version(result_socket.getSSL()) << ", " <<
       SSL_get_cipher(result_socket.getSSL()) << "]\n";
     
-    result_socket.ShowCerts();        /* show any certs */
+    result_socket.ShowCerts();        /* verify and show any certs */
     
     std::cerr << "Connection opened on client..." << std::endl;
   } // if (UseSsl)

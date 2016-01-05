@@ -36,6 +36,7 @@
 #include <bruce/build_id.h>
 #include <bruce/util/arg_parse_error.h>
 #include <tclap/CmdLine.h>
+#include <ssl/ssl_init_shared_state.h>
 
 using namespace Base;
 using namespace Bruce;
@@ -360,6 +361,15 @@ static void ParseArgs(int argc, char *argv[], TConfig &config) {
     config.UseOldOutputFormat = arg_use_old_output_format.getValue();
     config.UseSSL = arg_use_ssl.getValue();
     config.SSLClientCert = arg_ssl_client_cert.getValue();
+
+    if (config.UseSSL) {
+      // Should be first initialization of SSL
+      SSL_config::TSSL_Init& ssl_Singleton = 
+	SSL_config::TSSL_Init::Instance(config.SSLClientCert);
+      syslog(LOG_NOTICE, "SSL Client certificate: [%s]", 
+	     ssl_Singleton.getClientCertificate().c_str());
+    }
+
 
   } catch (const ArgException &x) {
     throw TArgParseError(x.error(), x.argId());

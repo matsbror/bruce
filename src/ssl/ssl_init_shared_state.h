@@ -31,6 +31,7 @@
 #include <sstream>
 
 #include <openssl/ssl.h>
+#include <openssl/err.h>
 #include <openssl/crypto.h>
 #include <syslog.h>
 
@@ -38,16 +39,16 @@
 namespace SSL_config {
 
 
-
+  
   // vector of locks used by openSSL
   static std::mutex* locks {nullptr};
   static int nlocks{0};
-
+  
   // Call back function used by openssl library to be thread safe
   static void locking_function(int mode, int n, 
-			const char *file, int line){
+			       const char *file, int line){
     
-
+    
     if (n >= nlocks){
       std::string filename{file};
       std::string error_string = "SSL Locks out of bounds in " +  
@@ -77,9 +78,9 @@ namespace SSL_config {
   
   class TSSL_Init {
   public:
-    static TSSL_Init& Instance(){
+    static TSSL_Init& Instance(std::string clientCert){
       //  thread safe in C++11
-      static TSSL_Init theInstance;
+      static TSSL_Init theInstance(clientCert);
       return theInstance;
     }
 
@@ -87,40 +88,12 @@ namespace SSL_config {
       return ctx;
     }
 
+    const std::string& getClientCertificate(){
+      return clientCertificate;
+    }
 
   private:
 
-    void LoadCertificates(SSL_CTX* local_ctx) {
-
-      // set the local certificate from CertFile 
-      std::string cert = "/home/mats/.ssh/ola_client.cert.pem";      
-      if ( SSL_CTX_use_certificate_file(local_ctx, cert.c_str(), 
-					SSL_FILETYPE_PEM) <= 0 ) {
-	std::string errorStr = "Could not load certifiate: " + cert;
-	syslog(LOG_ERR, "Could not load certificate: %s\n", cert.c_str());
-	throw std::runtime_error(errorStr);
-      }
-      syslog(LOG_INFO, "Loaded SSL certificate: %s", cert.c_str());
-
-      // set the private key from KeyFile (may be the same as CertFile) 
-      std::string keyFile = "/home/mats/.ssh/www.olamobile.com.key.pem";
-      if ( SSL_CTX_use_PrivateKey_file(local_ctx, keyFile.c_str(), 
-				       SSL_FILETYPE_PEM) <= 0 ) {
-	std::string errorStr = "Could not load key file: " + keyFile;
-	syslog(LOG_ERR, "Could not load key file: %s\n", keyFile.c_str());
-	throw std::runtime_error(errorStr);
-      }
-      syslog(LOG_INFO, "Set SSL Private key to: %s", keyFile.c_str());
-
-      // verify private key 
-      if ( !SSL_CTX_check_private_key(local_ctx) ) {
-	std::string errorStr = 
-	  "Private key does not match the public certificate";
-	syslog(LOG_ERR, "Private key does not match the public certificate\n");
-	throw std::runtime_error(errorStr);
-      }
-      syslog(LOG_INFO, "Verified private key");
-    } // LoadCertificates
     
 
     SSL_CTX* InitCTX(void) {
@@ -140,37 +113,45 @@ namespace SSL_config {
       return local_ctx;
     } // InitCTX
 
+
     // hidden constructor
-    TSSL_Init() {
+  TSSL_Init(std::string cc) :  clientCertificate{cc} {
+
+      // remove when sure
+      assert (!initialized);
+
       // Initalize basic SSL and BIO stuff
+
       SSL_library_init();
       SSL_load_error_strings();  
       ctx = InitCTX();
 
+      if (SSL_CTX_use_certificate_chain_file(ctx, cc.c_str()) != 1){
+	syslog(LOG_ERR, "Failed to load client side certificates from file: %s\n",
+	       cc.c_str());
 
-      if (!SSL_CTX_use_certificate_chain_file(ctx, "/home/mats/ssl-cert/client.pem") != 1){
-	syslog(LOG_ERR, "Failed to load client side certificates from file\n");
-	throw std::runtime_error("Failed to load client side certificates from file");	
+	while (unsigned long err = ERR_get_error()){
+	  char errStr[120];
+	  ERR_error_string(err, errStr);
+	  std::cerr << "SSL error: " << err << ", " << errStr << std::endl;
+	}
+
+	throw std::runtime_error("Failed to load client side certificates from file " + 
+				 cc);	
       }
 
-      if (SSL_CTX_use_PrivateKey_file(ctx, "/home/mats/ssl-cert/client.pem", SSL_FILETYPE_PEM)){
-	syslog(LOG_ERR, "Failed to load client privae key from file\n");
-	throw std::runtime_error("Failed to load client private key from file");	
+      // assuming key is in the same file as the client certificate
+      // This function might call for a passphrase
+      if (SSL_CTX_use_PrivateKey_file(ctx, cc.c_str(), SSL_FILETYPE_PEM) != 1){
+	syslog(LOG_ERR, "Failed to load client private key from file: %s\n", cc.c_str());
+	throw std::runtime_error("Failed to load client private key from file: " + cc);	
       }
 
-#if 0
-      //old code
-      LoadCertificates(ctx); // load certs 
+      // Load verified locations
+      // not needed if server certificate is stored in /etc/ssl/certs
 
-      SSL_CTX_set_verify_depth(ctx, 2);
-      SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, nullptr);
-      
-      // Load trusted CA. 
-      if (!SSL_CTX_load_verify_locations(ctx,"/home/mats/.ssh/ca-chain.cert.pem",NULL)) {
-	syslog(LOG_ERR, "Failed to load trusted CA\n");
-	throw std::runtime_error("Failed to load trusted CA");
-      }
-#endif
+      // Search certificate chain 4 levels
+      SSL_CTX_set_verify_depth(ctx, 4);
 
       nlocks = CRYPTO_num_locks();
       locks = new std::mutex[nlocks];
@@ -182,6 +163,8 @@ namespace SSL_config {
 	throw std::runtime_error("Failed to allocate memory for locks");
       }
 
+      initialized = true;
+
     } // TSSL_Init constructor
 
     //    TSSL_Init(TSSL_Init const&) = delete;
@@ -192,10 +175,12 @@ namespace SSL_config {
 
     // Shared state
     SSL_CTX *ctx;              // SSL context
-
+    std::string clientCertificate {};
+    bool initialized {false};
+    
   };  // class TSSL_Init
 
 
 
-
-} // namespace SSL_config
+    
+  } // namespace SSL_config

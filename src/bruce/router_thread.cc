@@ -118,15 +118,16 @@ TRouterThread::TRouterThread(const TConfig &config, const TConf &conf,
       DebugLogger(debug_setup, TDebugSetup::TLogId::MSG_RECEIVE,
                   !config.OmitTimestamp, config.UseOldOutputFormat) {
   // Init SSL
+  // not needed as SSL is initialized during config read
   if (Config.UseSSL) {
-    SSL_config::TSSL_Init& ssl_Singleton = SSL_config::TSSL_Init::Instance();
+    SSL_config::TSSL_Init& ssl_Singleton = SSL_config::TSSL_Init::Instance("");
     union {
       unsigned long c1;
       SSL_CTX *c2;
     } ctx_union;
     assert(sizeof(ctx_union.c1) == sizeof(ctx_union.c2));
     ctx_union.c2 = ssl_Singleton.get_ctx();
-    syslog(LOG_NOTICE, "MockKafkaServer SSL Initialized with CTX: 0x%lx", ctx_union.c1);
+    syslog(LOG_NOTICE, "Router thread SSL Initialized with CTX: 0x%lx", ctx_union.c1);
   }
 }
 

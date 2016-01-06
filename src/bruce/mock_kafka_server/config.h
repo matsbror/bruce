@@ -31,8 +31,6 @@ namespace Bruce {
 
   namespace MockKafkaServer {
 
-    extern bool IsUsingSSL;
-
     struct TConfig {
       /* Throws TArgParseError on error parsing args. */
       TConfig(int argc, char *argv[]);

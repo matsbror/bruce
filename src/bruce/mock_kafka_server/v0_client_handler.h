@@ -46,8 +46,6 @@ namespace Bruce {
 
   namespace MockKafkaServer {
 
-    extern bool IsUsingSSL;
-
     class TV0ClientHandler final : public TSingleClientHandlerBase {
       NO_COPY_SEMANTICS(TV0ClientHandler);
 

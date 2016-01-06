@@ -116,7 +116,7 @@ TV0ClientHandler::SendMetadataResponse(const TMetadataRequest &request,
 
     // hack to test if I can get the mock kafka server to send the 
     // ports to stud instead of the physical ports.
-    if (IsUsingSSL) {
+    if (Config.UseSSL) {
       phys_port = 8443 + node_id;
     }
 

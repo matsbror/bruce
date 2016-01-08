@@ -76,10 +76,6 @@ bool TMetadataFetcher::Connect(const char *host_name, in_port_t port, bool UseSS
   assert(this);
   Disconnect();
 
-  if (UseSSL){
-    std::cout << "Metadata connect with SSL" << std::endl;
-  }
-
   try {
     ConnectToHost(host_name, port, Sock, UseSSL);
   } catch (const std::system_error &x) {

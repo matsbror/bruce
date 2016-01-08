@@ -50,7 +50,7 @@ bool TAbstractSocket::IsReadable(int timeout) const {
 size_t TAbstractSocket::ReadAtMost(void *buf, size_t max_size) {
 
   if (useSSL) {
-    syslog(LOG_INFO, "Try to SSL_read %d bytes", static_cast<int>(max_size));
+    syslog(LOG_DEBUG, "Try to SSL_read %d bytes", static_cast<int>(max_size));
     int bytes_read = SSL_read(thisSsl, buf, max_size);
     if (bytes_read < 0){
       int sslerr = SSL_get_error(thisSsl, bytes_read);
@@ -84,7 +84,7 @@ size_t TAbstractSocket::WriteAtMost(const void *buf, size_t max_size) {
   struct stat stat;
   IfLt0(fstat(OsHandle, &stat));
   if (useSSL){
-    syslog(LOG_INFO, "Try to SSL_write %d bytes", static_cast<int>(max_size));
+    syslog(LOG_DEBUG, "Try to SSL_write %d bytes", static_cast<int>(max_size));
     int nbsent = SSL_write(thisSsl, buf, max_size);
     if (nbsent <=0 ){
       int sslerr = SSL_get_error(thisSsl, nbsent);
@@ -121,7 +121,7 @@ bool TAbstractSocket::TryReadExactly(void *buf, size_t size) {
   char *end = csr + size;
 
   if (useSSL) {
-    syslog(LOG_INFO, "Try to SSL_read exactly %d bytes", static_cast<int>(size));
+    syslog(LOG_DEBUG, "Try to SSL_read exactly %d bytes", static_cast<int>(size));
   }
   while (csr < end) {
     size_t actual_size = ReadAtMost(csr, end - csr);
@@ -150,7 +150,7 @@ bool TAbstractSocket::TryReadExactly(void *buf, size_t size, int timeout_ms) {
   }
 
   if (useSSL) {
-    syslog(LOG_INFO, "Try to SSL_read exactly %d bytes", static_cast<int>(size));
+    syslog(LOG_DEBUG, "Try to SSL_read exactly %d bytes", static_cast<int>(size));
   }
   char *csr = static_cast<char *>(buf);
   char *end = csr + size;
@@ -162,7 +162,7 @@ bool TAbstractSocket::TryReadExactly(void *buf, size_t size, int timeout_ms) {
 
   for (; ; ) {
     size_t actual_size = ReadAtMost(csr, end - csr, time_left);
-
+    // 
     if (!actual_size) {
       if (csr > buf) {
         throw TUnexpectedEnd();
@@ -189,7 +189,7 @@ bool TAbstractSocket::TryWriteExactly(const void *buf, size_t size) {
   const char *end = csr + size;
 
   if (useSSL) {
-    syslog(LOG_INFO, "Try to SSL_write exactly %d bytes", static_cast<int>(size));
+    syslog(LOG_DEBUG, "Try to SSL_write exactly %d bytes", static_cast<int>(size));
   }
   while (csr < end) {
     size_t actual_size = WriteAtMost(csr, end - csr);
@@ -219,7 +219,7 @@ bool TAbstractSocket::TryWriteExactly(const void *buf, size_t size,
   }
 
   if (useSSL) {
-    syslog(LOG_INFO, "Try to SSL_write exactly %d bytes", static_cast<int>(size));
+    syslog(LOG_DEBUG, "Try to SSL_write exactly %d bytes", static_cast<int>(size));
   }
   const char *csr = static_cast<const char *>(buf);
   const char *end = csr + size;

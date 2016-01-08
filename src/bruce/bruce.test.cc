@@ -228,15 +228,17 @@ namespace {
     args.push_back(msg_buffer_max_str.c_str());
     args.push_back("--receive_socket_name");
     args.push_back(UnixSocketName);
+    args.push_back("--log_echo");
     args.push_back("--log_level");
     args.push_back("LOG_INFO");
     // args.push_back("--log_echo");
     if (UseSSL) {
-      std::cout << "Start Bruce with SSL!" << std::endl;
       //args.push_back("--log_echo"); // for debug
       args.push_back("--use_ssl");
-      args.push_back("--ssl_client_cert");
-      args.push_back("/home/mats/ssl-certs/client.pem");
+      //      args.push_back("--ssl_client_cert");
+      //      args.push_back("/home/mats/ssl-certs/client.pem");
+      args.push_back("--ssl_trusted_root");
+      args.push_back("/home/mats/ssl-certs/serverCA.pem");
     } // UseSSL
     args.push_back(nullptr);
 
@@ -524,7 +526,6 @@ namespace {
     ASSERT_EQ(server.GetBruceReturnValue(), EXIT_SUCCESS);
       SleepMilliseconds(10);
   }
-
   
   // Same as Deliverytest, but now with SSL
   TEST_F(TBruceTest, SSLDeliveryTest1) {
@@ -554,17 +555,15 @@ namespace {
     // First stud instance
     std::string stud1_command = "stud --daemon --tls -q -s -f localhost," + 
       std::to_string(stud_port) + " -b localhost," + 
-      std::to_string(port1) + " /home/mats/ssl-certs/server.pem";
-    std::cout << "Start stud 1 with: " << stud1_command << std::endl;
+      std::to_string(port1) + " /home/mats/ssl-certs/server.pem > /dev/null";
+    //std::cout << "Start stud 1 with: " << stud1_command << std::endl;
     system(stud1_command.c_str());
     // Second stud instance
     std::string stud2_command = "stud --daemon --tls -q -s -f localhost," + 
       std::to_string(stud_port+1) + " -b localhost," + 
-      std::to_string(port2) + " /home/mats/ssl-certs/server.pem";
-    std::cout << "Start stud 2 with: " << stud2_command << std::endl;
+      std::to_string(port2) + " /home/mats/ssl-certs/server.pem > /dev/null";
+    //std::cout << "Start stud 2 with: " << stud2_command << std::endl;
     system(stud2_command.c_str());
-
-    std::cout << "Continue after starting stud(s)!" << std::endl;
 
     // Start Bruce with SSL talking to stud
     TBruceTestServer server(stud_port, 1024, 
@@ -665,7 +664,6 @@ namespace {
     system("rm /tmp/rmstud.sh");
 
   } // end SSLDeliveryTest1
-
 
 
 
@@ -1313,7 +1311,6 @@ namespace {
     server.Join();
     ASSERT_EQ(server.GetBruceReturnValue(), EXIT_SUCCESS);
   }
-
 
 
 }  // namespace

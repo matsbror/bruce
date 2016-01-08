@@ -294,6 +294,12 @@ static void ParseArgs(int argc, char *argv[], TConfig &config) {
         "DIR");
     cmd.add(arg_ssl_client_cert);
 
+    ValueArg<decltype(config.SSLTrustedRoot)> arg_ssl_trusted_root("", 
+							    "ssl_trusted_root",
+        "Absolute path to SSL trusted root certificate.", false, config.SSLTrustedRoot,
+        "DIR");
+    cmd.add(arg_ssl_trusted_root);
+
     cmd.parse(argc, &arg_vec[0]);
     config.ConfigPath = arg_config_path.getValue();
     config.LogLevel = StringToLogLevel(arg_log_level.getValue());
@@ -361,11 +367,18 @@ static void ParseArgs(int argc, char *argv[], TConfig &config) {
     config.UseOldOutputFormat = arg_use_old_output_format.getValue();
     config.UseSSL = arg_use_ssl.getValue();
     config.SSLClientCert = arg_ssl_client_cert.getValue();
+    config.SSLTrustedRoot = arg_ssl_trusted_root.getValue();
 
     if (config.UseSSL) {
+
+      // Check that trusted root is not empty
+      if (config.SSLTrustedRoot.empty()) {
+        throw TArgParseError("You must specify a trusted root certificate with --ssl_trusted_root");
+      }
+
       // Should be first initialization of SSL
       SSL_config::TSSL_Init& ssl_Singleton = 
-	SSL_config::TSSL_Init::Instance(config.SSLClientCert);
+	SSL_config::TSSL_Init::Instance(config.SSLTrustedRoot, config.SSLClientCert);
       syslog(LOG_NOTICE, "SSL Client certificate: [%s]", 
 	     ssl_Singleton.getClientCertificate().c_str());
     }
@@ -507,6 +520,7 @@ void Bruce::LogConfig(const TConfig &config) {
   if (config.UseSSL){
     syslog(LOG_NOTICE, "Using SSL in communication with Kafka enabled");
     syslog(LOG_NOTICE, "Path to client certificate: [%s]", config.SSLClientCert.c_str());
+    syslog(LOG_NOTICE, "Path to trusted root certificate: [%s]", config.SSLTrustedRoot.c_str());
   } else {
     syslog(LOG_NOTICE,  "Using SSL in communication with Kafka disabled");
   }

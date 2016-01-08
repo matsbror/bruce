@@ -114,6 +114,8 @@ namespace Bruce {
 
     std::string SSLClientCert;
 
+    std::string SSLTrustedRoot;
+
 
   };  // TConfig
 

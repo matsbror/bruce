@@ -260,9 +260,9 @@ bool TConnector::DoConnect() {
   uint16_t port = broker.GetPort();
   long broker_id = broker.GetId();
   syslog(LOG_NOTICE, "Connector thread %d (index %lu broker %ld) connecting "
-      "to host %s port %u", static_cast<int>(Gettid()),
+      "to host %s port %u, using SSL? (%s)", static_cast<int>(Gettid()),
       static_cast<unsigned long>(MyBrokerIndex), broker_id, host.c_str(),
-      static_cast<unsigned>(port));
+	 static_cast<unsigned>(port),(Ds.Config.UseSSL ? "true" : "false" ));
 
   try {
     // test for the need to do an SSL connection

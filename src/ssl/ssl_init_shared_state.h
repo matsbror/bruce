@@ -78,9 +78,9 @@ namespace SSL_config {
   
   class TSSL_Init {
   public:
-    static TSSL_Init& Instance(std::string clientCert){
+    static TSSL_Init& Instance(std::string trustedRoot, std::string clientCert = ""){
       //  thread safe in C++11
-      static TSSL_Init theInstance(clientCert);
+      static TSSL_Init theInstance(trustedRoot, clientCert);
       return theInstance;
     }
 
@@ -115,7 +115,7 @@ namespace SSL_config {
 
 
     // hidden constructor
-  TSSL_Init(std::string cc) :  clientCertificate{cc} {
+  TSSL_Init(std::string tr, std::string cc = "") : trustedRoot{tr}, clientCertificate{cc} {
 
       // remove when sure
       assert (!initialized);
@@ -126,32 +126,45 @@ namespace SSL_config {
       SSL_load_error_strings();  
       ctx = InitCTX();
 
-      if (SSL_CTX_use_certificate_chain_file(ctx, cc.c_str()) != 1){
-	syslog(LOG_ERR, "Failed to load client side certificates from file: %s\n",
-	       cc.c_str());
+      
+      // Load verified locations
+      SSL_CTX_set_verify_depth(ctx, 2);
 
-	while (unsigned long err = ERR_get_error()){
-	  char errStr[120];
-	  ERR_error_string(err, errStr);
-	  std::cerr << "SSL error: " << err << ", " << errStr << std::endl;
+      // Load trusted CA. 
+      if (!SSL_CTX_load_verify_locations(ctx, tr.c_str(), NULL)) {
+	syslog(LOG_ERR, "Failed to load trusted CA\n");
+	throw std::runtime_error("Failed to load trusted CA");
+      }
+
+      SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, nullptr);
+
+      // if client certificate is specified, load it
+      if (!cc.empty()){
+
+	if (SSL_CTX_use_certificate_chain_file(ctx, cc.c_str()) != 1){
+	  syslog(LOG_ERR, "Failed to load client side certificates from file: %s\n",
+		 cc.c_str());
+	  
+	  while (unsigned long err = ERR_get_error()){
+	    char errStr[120];
+	    ERR_error_string(err, errStr);
+	    std::cerr << "SSL error: " << err << ", " << errStr << std::endl;
+	  }
+	  
+	  throw std::runtime_error("Failed to load client side certificates from file " + 
+				   cc);	
+	}
+      
+
+	// assuming key is in the same file as the client certificate
+	// This function might call for a passphrase
+	if (SSL_CTX_use_PrivateKey_file(ctx, cc.c_str(), SSL_FILETYPE_PEM) != 1){
+	  syslog(LOG_ERR, "Failed to load client private key from file: %s\n", cc.c_str());
+	  throw std::runtime_error("Failed to load client private key from file: " + cc);	
 	}
 
-	throw std::runtime_error("Failed to load client side certificates from file " + 
-				 cc);	
-      }
 
-      // assuming key is in the same file as the client certificate
-      // This function might call for a passphrase
-      if (SSL_CTX_use_PrivateKey_file(ctx, cc.c_str(), SSL_FILETYPE_PEM) != 1){
-	syslog(LOG_ERR, "Failed to load client private key from file: %s\n", cc.c_str());
-	throw std::runtime_error("Failed to load client private key from file: " + cc);	
-      }
-
-      // Load verified locations
-      // not needed if server certificate is stored in /etc/ssl/certs
-
-      // Search certificate chain 4 levels
-      SSL_CTX_set_verify_depth(ctx, 4);
+      } 
 
       nlocks = CRYPTO_num_locks();
       locks = new std::mutex[nlocks];
@@ -175,7 +188,8 @@ namespace SSL_config {
 
     // Shared state
     SSL_CTX *ctx;              // SSL context
-    std::string clientCertificate {};
+    std::string trustedRoot {}; // required if using ssl
+    std::string clientCertificate {}; // optional
     bool initialized {false};
     
   };  // class TSSL_Init

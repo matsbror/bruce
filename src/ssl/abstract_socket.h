@@ -182,24 +182,26 @@ namespace SSL_config {
 	// Verify the certificate
 	long int ssl_err {SSL_get_verify_result(thisSsl)};
 	if(ssl_err == X509_V_OK){
-	  std::cout << "Certificate verified!"  << std::endl;
+	  syslog(LOG_INFO, "SSL Certificate verified");
+	  X509_free(cert);     /* free the malloc'ed certificate copy */
 	} else {
-	  std::cout << "Server certificates:\n";
-	  
-	  char *server_cert =  X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
-	  char *client_cert = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0);
-	  
-	  std::cout << "Subject: " <<  server_cert << std::endl;
-	  std::cout << "Issuer: " << client_cert << std::endl;
-	  std::cout << "Certificate not valid!"  << std::endl;
-	  std::cout << "Error code: " << ssl_err << std::endl;
-	  free(server_cert);       /* free the malloc'ed string */
-	  free(client_cert);       /* free the malloc'ed string */
+	  char *cert_name =  X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
+	  char *cert_issuer = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0);
+
+	  std::string errorString = "Certificate NOT verified! Cert Subject: " + std::string(cert_name) +
+	    ", Issuer: " + std::string(cert_issuer) + ", Verify result: " +
+	    std::to_string(ssl_err);
+	  syslog(LOG_ERR, "%s", errorString.c_str());
+
+	  free(cert_name);       /* free the malloc'ed string */
+	  free(cert_issuer);       /* free the malloc'ed string */
+	  X509_free(cert);     /* free the malloc'ed certificate copy */
+	  throw std::runtime_error(errorString.c_str());
 	}
 	
-	X509_free(cert);     /* free the malloc'ed certificate copy */
       } else {
-	std::cout << "No certificates.\n";
+	syslog(LOG_ERR,"No certificates!");
+	X509_free(cert);     /* free the malloc'ed certificate copy */
 	return;
       }
     } // SHowCerts
